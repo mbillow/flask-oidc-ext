@@ -1,4 +1,4 @@
-Flask
-itsdangerous
-oauth2client
-six
+Flask==1.1.2
+itsdangerous==1.1.0
+oauth2client==4.1.3
+six==1.15.0

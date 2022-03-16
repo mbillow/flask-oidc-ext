@@ -1,5 +1,5 @@
-import os.path
 import io
+import os.path
 import sys
 
 from setuptools import setup
@@ -31,9 +31,14 @@ setup(
     url="https://github.com/svintit/flask-oidc-ext",
     author="Erica Ehrhardt, Patrick Uiterwijk, Traian Svinti",
     author_email="traian.svinti@gmail.com",
-    version="1.4.3",
+    version="1.4.4",
     packages=["flask_oidc_ext"],
-    install_requires=["Flask", "itsdangerous", "oauth2client", "six",],
+    install_requires=[
+        "Flask",
+        "itsdangerous",
+        "oauth2client",
+        "six",
+    ],
     tests_require=["nose", "mock"],
     entry_points={
         "console_scripts": ["oidc-register=flask_oidc_ext.registration_util:main"],

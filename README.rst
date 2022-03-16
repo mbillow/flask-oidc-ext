@@ -31,7 +31,8 @@ It has been tested with:
 Project status
 **************
 
-This project is actively maintained.
+This project comes as is, it is no longer being maintained as it does not need to at it's core.
+Any necessary updates will be reviewed and released.
 
 --------------
 
@@ -44,4 +45,5 @@ Extension list
    is sent to. E.g ``localhost`` vs ``127.0.0.1``.
 - Token caching added: https://github.com/svintit/flask-oidc-ext/pull/9
 - Better error handling: https://github.com/svintit/flask-oidc-ext/pull/5
+- Useful helper functions added `get_token` and for clearing specific tokens
 

@@ -844,6 +844,18 @@ class OpenIDConnect(object):
         # TODO: Add single logout
         self._set_cookie_id_token(None)
 
+    def get_token(self, request):
+        token = None
+        if "Authorization" in request.headers and request.headers[
+            "Authorization"
+        ].startswith("Bearer "):
+            token = request.headers["Authorization"].split(None, 1)[1].strip()
+        if "access_token" in request.form:
+            token = request.form["access_token"]
+        elif "access_token" in request.args:
+            token = request.args["access_token"]
+        return token
+
     # Below here is for resource servers to validate tokens
     def validate_token(self, token, scopes_required=None):
         """
@@ -957,16 +969,7 @@ class OpenIDConnect(object):
         def wrapper(view_func):
             @wraps(view_func)
             def decorated(*args, **kwargs):
-                token = None
-                if "Authorization" in request.headers and request.headers[
-                    "Authorization"
-                ].startswith("Bearer "):
-                    token = request.headers["Authorization"].split(None, 1)[1].strip()
-                if "access_token" in request.form:
-                    token = request.form["access_token"]
-                elif "access_token" in request.args:
-                    token = request.args["access_token"]
-
+                token = self.get_token(request)
                 validity = self.validate_token(token, scopes_required)
                 if (validity is True) or (not require_token):
                     return view_func(*args, **kwargs)
@@ -988,6 +991,12 @@ class OpenIDConnect(object):
 
     def clear_bad_tokens_store(self):
         self.bad_tokens_store = {}
+
+    def clear_token_from_tokens_store(self, token):
+        self.tokens_store.pop(token, None)
+
+    def clear_token_from_bad_tokens_store(self, token):
+        self.bad_tokens_store.pop(token, None)
 
     def is_expired(self, token):
         current_time = time.time()

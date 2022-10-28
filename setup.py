@@ -35,7 +35,7 @@ setup(
     packages=["flask_oidc_ext"],
     install_requires=[
         "Flask",
-        "itsdangerous",
+        "authlib",
         "oauth2client",
         "six",
     ],

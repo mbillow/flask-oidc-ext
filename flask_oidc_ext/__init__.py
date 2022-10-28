@@ -33,6 +33,11 @@ import logging
 from warnings import warn
 import calendar
 
+from authlib.jose import JsonWebSignature
+from authlib.jose.errors import (
+    DecodeError,
+    BadSignatureError,
+)
 from six.moves.urllib.parse import urlencode
 from flask import request, session, redirect, url_for, g, current_app, abort
 from oauth2client.client import (
@@ -42,11 +47,6 @@ from oauth2client.client import (
     OAuth2Credentials,
 )
 import httplib2
-from itsdangerous import (
-    JSONWebSignatureSerializer,
-    BadSignature,
-    SignatureExpired,
-)
 
 __all__ = ["OpenIDConnect", "MemoryCredentials", "MemoryTokens", "MemoryBadTokens"]
 
@@ -224,14 +224,11 @@ class OpenIDConnect(object):
         )
         assert isinstance(self.flow, OAuth2WebServerFlow)
 
-        # TODO use configurable salt string instead of hardcoded value to improve security
-        # create signers using the Flask secret key
-        self.extra_data_serializer = JSONWebSignatureSerializer(
-            app.config["SECRET_KEY"], salt="flask-oidc-extra-data"
-        )
-        self.cookie_serializer = JSONWebSignatureSerializer(
-            app.config["SECRET_KEY"], salt="flask-oidc-cookie"
-        )
+        # Other algorithms are available. We use the default that works with the app secret. 
+        self.signing_algorithm="HS256"
+        self.secret=app.config["SECRET_KEY"]
+        self.cookie_serializer = JsonWebSignature()
+        self.extra_data_serializer = JsonWebSignature()
 
         try:
             self.credentials_store = app.config["OIDC_CREDENTIALS_STORE"]
@@ -410,12 +407,13 @@ class OpenIDConnect(object):
                 # Do not error if we were unable to get the cookie.
                 # The user can debug this themselves.
                 return None
-            return self.cookie_serializer.loads(id_token_cookie)
-        except SignatureExpired:
+            id_token_deserialized = self.cookie_serializer.deserialize_compact(id_token_cookie, self.secret)
+            return json.loads(id_token_deserialized['payload'])
+        except BadSignatureError:
             logger.debug("Invalid ID token cookie", exc_info=True)
             return None
-        except BadSignature:
-            logger.info("Signature invalid for ID token cookie", exc_info=True)
+        except DecodeError:
+            logger.info("Error checkin ID token signature", exc_info=True)
             return None
 
     def set_cookie_id_token(self, id_token):
@@ -450,7 +448,7 @@ class OpenIDConnect(object):
 
         if getattr(g, "oidc_id_token_dirty", False):
             if g.oidc_id_token:
-                signed_id_token = self.cookie_serializer.dumps(g.oidc_id_token)
+                signed_id_token = self.cookie_serializer.serialize_compact({'alg': self.signing_algorithm}, json.dumps(g.oidc_id_token), self.secret).decode("utf-8")
                 response.set_cookie(
                     current_app.config["OIDC_ID_TOKEN_COOKIE_NAME"],
                     signed_id_token,
@@ -648,7 +646,7 @@ class OpenIDConnect(object):
         if customstate is not None:
             statefield = "custom"
             statevalue = customstate
-        state[statefield] = self.extra_data_serializer.dumps(statevalue).decode("utf-8")
+        state[statefield] = self.extra_data_serializer.serialize_compact({'alg': self.signing_algorithm}, statevalue, self.secret).decode("utf-8")
 
         extra_params = {
             "state": urlsafe_b64encode(json.dumps(state).encode("utf-8")),
@@ -814,8 +812,9 @@ class OpenIDConnect(object):
 
         # Retrieve the extra statefield data
         try:
-            response = self.extra_data_serializer.loads(state[statefield])
-        except BadSignature:
+            state_deserialized = self.extra_data_serializer.deserialize_compact(state[statefield], self.secret)
+            response = state_deserialized['payload'].decode('utf-8')
+        except (BadSignatureError, DecodeError):
             logger.error("State field was invalid")
             return True, self._oidc_error()
 

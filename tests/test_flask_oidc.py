@@ -12,7 +12,7 @@ except ImportError:
 from six.moves.urllib.parse import urlsplit, parse_qs, urlencode
 from nose.tools import nottest
 
-from .app import create_app
+from app import create_app
 
 
 last_request = None

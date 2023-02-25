@@ -225,8 +225,8 @@ class OpenIDConnect(object):
         assert isinstance(self.flow, OAuth2WebServerFlow)
 
         # Other algorithms are available. We use the default that works with the app secret. 
-        self.signing_algorithm="HS256"
-        self.secret=app.config["SECRET_KEY"]
+        self.signing_algorithm = {"alg": "HS256"}
+        self.secret = app.config["SECRET_KEY"]
         self.cookie_serializer = JsonWebSignature()
         self.extra_data_serializer = JsonWebSignature()
 
@@ -413,7 +413,7 @@ class OpenIDConnect(object):
             logger.debug("Invalid ID token cookie", exc_info=True)
             return None
         except DecodeError:
-            logger.info("Error checkin ID token signature", exc_info=True)
+            logger.info("Error checking ID token signature", exc_info=True)
             return None
 
     def set_cookie_id_token(self, id_token):
@@ -448,7 +448,7 @@ class OpenIDConnect(object):
 
         if getattr(g, "oidc_id_token_dirty", False):
             if g.oidc_id_token:
-                signed_id_token = self.cookie_serializer.serialize_compact({'alg': self.signing_algorithm}, json.dumps(g.oidc_id_token), self.secret).decode("utf-8")
+                signed_id_token = self.cookie_serializer.serialize_compact(self.signing_algorithm, json.dumps(g.oidc_id_token), self.secret).decode("utf-8")
                 response.set_cookie(
                     current_app.config["OIDC_ID_TOKEN_COOKIE_NAME"],
                     signed_id_token,
@@ -646,7 +646,7 @@ class OpenIDConnect(object):
         if customstate is not None:
             statefield = "custom"
             statevalue = customstate
-        state[statefield] = self.extra_data_serializer.serialize_compact({'alg': self.signing_algorithm}, statevalue, self.secret).decode("utf-8")
+        state[statefield] = self.extra_data_serializer.serialize_compact(self.signing_algorithm, statevalue, self.secret).decode("utf-8")
 
         extra_params = {
             "state": urlsafe_b64encode(json.dumps(state).encode("utf-8")),
